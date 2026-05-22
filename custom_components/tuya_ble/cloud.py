@@ -206,6 +206,28 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
             self._data.update(cache_item.login)
             break
 
+
+    def has_cached_credentials(self, address: str) -> bool:
+        """Return True if the cloud cache already has credentials for this MAC.
+
+        Bound Tuya BLE devices often advertise with EMPTY service data after
+        their initial Smart Life pairing. They become invisible to the
+        ServiceUUID filter, even though Tuya cloud knows their MAC + key.
+        This helper lets the config flow include them anyway when we have
+        a credential match.
+        """
+        global _cache
+        key = self._get_cache_key(self._data) if self._data else None
+        addr = (address or "").upper()
+        if key and (item := _cache.get(key)) is not None:
+            if addr in item.credentials:
+                return True
+        # Fallback: any cached login that has this MAC
+        for item in _cache.values():
+            if addr in item.credentials:
+                return True
+        return False
+
     async def get_device_credentials(
         self,
         address: str,

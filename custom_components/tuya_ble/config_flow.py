@@ -322,9 +322,21 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                 if (
                     discovery.address in current_addresses
                     or discovery.address in self._discovered_devices
-                    or discovery.service_data is None
-                    or SERVICE_UUID not in discovery.service_data.keys()
                 ):
+                    continue
+                # Standard path: device advertises with Tuya service UUID.
+                tuya_uuid_ok = (
+                    discovery.service_data is not None
+                    and SERVICE_UUID in discovery.service_data.keys()
+                )
+                # Fallback for bound BLE-only lamps that advertise with
+                # empty service data. Accept them if the cloud cache
+                # already knows this MAC (so we have local_key + product_id).
+                mac_cached = (
+                    self._manager is not None
+                    and self._manager.has_cached_credentials(discovery.address)
+                )
+                if not (tuya_uuid_ok or mac_cached):
                     continue
                 self._discovered_devices[discovery.address] = discovery
 
