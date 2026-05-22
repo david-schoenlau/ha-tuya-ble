@@ -23,5 +23,5 @@
     "pycryptodomex==3.21.0"
   ],
   "iot_class": "local_push",
-  "version": "0.1.9"
+  "version": "0.1.9-homelab.1"
 }

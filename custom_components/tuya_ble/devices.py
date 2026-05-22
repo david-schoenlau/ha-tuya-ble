@@ -334,6 +334,14 @@ devices_database: dict[str, TuyaBLECategoryInfo] = {
             )
         },
     ),
+    "dj": TuyaBLECategoryInfo(
+        products={
+            "10qaawhk":  # generic Smart Ceiling Light (CCT only, no RGB)
+            TuyaBLEProductInfo(
+                name="Smart Ceiling Light",
+            ),
+        },
+    ),
 }
 
 
