@@ -113,6 +113,10 @@ class TuyaLightEntityDescription(TuyaBLEEntityDescription, LightEntityDescriptio
     default_color_type: ColorTypeData = field(
         default_factory=lambda: DEFAULT_COLOR_TYPE_DATA
     )
+    # Per-product overrides for DP value ranges/enums. Used by
+    # ProductsMapping to patch the cloud-derived spec for specific
+    # product_ids where the cloud info is incomplete.
+    values_overrides: dict[TuyaDataPointCode, dict] | None = None
 
 
 # You can add here description for device for which automatic capabilities setting
