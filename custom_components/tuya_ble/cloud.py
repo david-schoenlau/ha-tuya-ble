@@ -10,7 +10,7 @@ from typing import Any
 
 from tuya_iot import AuthType, TuyaOpenAPI
 
-from homeassistant.const import CONF_ADDRESS, CONF_COUNTRY_CODE, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_ADDRESS, CONF_COUNTRY_CODE, CONF_DEVICE_ID, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
 from .const import (
