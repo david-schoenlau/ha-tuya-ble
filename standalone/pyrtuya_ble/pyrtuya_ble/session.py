@@ -18,7 +18,7 @@ from bleak_retry_connector import BleakClientWithServiceCache, establish_connect
 # Originally used homeassistant.components.bluetooth + homeassistant.core.HomeAssistant.
 # We are HA-agnostic; callers pass a BLEDevice directly and don't need an `hass`.
 
-from . import ble_protocol
+from . import protocol as ble_protocol
 from .protocol import parse_dp_report, parse_dp_report_v3, parse_frames
 from .const import (
     WRITE_UUID,
