@@ -47,14 +47,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "tuya_ble setup: %s not in BT cache, active scanning 20s",
             address,
         )
+        # HA's bluetooth integration owns the adapter, so a plain
+        # BleakScanner.find_device_by_address returns instantly with None.
+        # Instead, register an HA bluetooth callback for the specific MAC
+        # and wait for HA's own scanner to surface it.
         try:
-            from bleak import BleakScanner
-            ble_device = await BleakScanner.find_device_by_address(
-                address.upper(), timeout=20.0
+            import asyncio
+            from homeassistant.components.bluetooth.match import (
+                ADDRESS, BluetoothCallbackMatcher,
+            )
+            seen = asyncio.Event()
+
+            @callback
+            def _seen(service_info, change):
+                seen.set()
+
+            cancel = bluetooth.async_register_callback(
+                hass, _seen,
+                BluetoothCallbackMatcher({ADDRESS: address.upper()}),
+                bluetooth.BluetoothScanningMode.ACTIVE,
+            )
+            try:
+                await asyncio.wait_for(seen.wait(), timeout=25.0)
+            except asyncio.TimeoutError:
+                pass
+            finally:
+                cancel()
+            ble_device = bluetooth.async_ble_device_from_address(
+                hass, address.upper(), True
             )
         except Exception as e:
             _LOGGER.warning(
-                "tuya_ble setup: active scan failed for %s: %s", address, e
+                "tuya_ble setup: bluetooth callback wait failed for %s: %s",
+                address, e,
             )
         if ble_device is None:
             _LOGGER.info(
