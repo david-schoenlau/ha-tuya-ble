@@ -19,7 +19,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.custom_components.tuya_ble.tuya_ble import (
+from .tuya_ble import (
     TuyaBLEDevice,
     TuyaBLEEntityDescription,
 )
