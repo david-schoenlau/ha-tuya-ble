@@ -53,9 +53,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # and wait for HA's own scanner to surface it.
         try:
             import asyncio
-            from homeassistant.components.bluetooth.match import (
-                ADDRESS, BluetoothCallbackMatcher,
-            )
             seen = asyncio.Event()
 
             @callback
