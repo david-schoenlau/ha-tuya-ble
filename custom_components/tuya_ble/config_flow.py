@@ -357,7 +357,7 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
             # Inject every cached MAC that we have cloud credentials for but
             # whose advertisement HA's bluetooth integration didn't surface
             # (this happens with bound Tuya BLE lamps that advertise with
-            # an empty payload — Bleak/BlueZ sees them, HA's discovery
+            # an empty payload - Bleak/BlueZ sees them, HA's discovery
             # cache often filters them out).
             from homeassistant.components.bluetooth import (
                 async_ble_device_from_address,
@@ -372,7 +372,7 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                 ble_dev = async_ble_device_from_address(self.hass, mac_addr, True)
                 if ble_dev is None:
                     _LOGGER.info(
-                        "tuya_ble discovery: cached MAC %s not in BT manager — injecting placeholder",
+                        "tuya_ble discovery: cached MAC %s not in BT manager - injecting placeholder",
                         mac_addr,
                     )
                     # Best-effort placeholder so user can still pick it.
@@ -397,7 +397,7 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                             tx_power=None,
                             rssi=-127,
                         )
-                    # Lightweight stand-in object — only address is used by
+                    # Lightweight stand-in object - only address is used by
                     # the device-select form. The real connect uses the
                     # bluetooth manager later.
                     class _ShimDevice:
