@@ -175,6 +175,7 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
 
     async def build_cache(self) -> None:
         """Build cache of the Tuya BLE devices credentials."""
+        _LOGGER.info("tuya_ble cloud: build_cache starting")
         data = {}
         tuya_config_entries = self._hass.config_entries.async_entries(TUYA_DOMAIN)
         for config_entry in tuya_config_entries:
@@ -187,6 +188,8 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
                     item = _cache.get(key)
                     if item and len(item.credentials) == 0:
                         await self._fill_cache_item(item)
+                if item is not None:
+                    _LOGGER.info("tuya_ble cloud: build_cache populated %d MAC credentials", len(item.credentials))
 
         ble_config_entries = self._hass.config_entries.async_entries(DOMAIN)
         for config_entry in ble_config_entries:
@@ -199,6 +202,8 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
                     item = _cache.get(key)
                     if item and len(item.credentials) == 0:
                         await self._fill_cache_item(item)
+                if item is not None:
+                    _LOGGER.info("tuya_ble cloud: build_cache populated %d MAC credentials", len(item.credentials))
 
     def get_login_from_cache(self) -> None:
         """Get login data from cache."""

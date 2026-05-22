@@ -318,44 +318,41 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
             self._discovered_devices[discovery.address] = discovery
         else:
             current_addresses = self._async_current_ids()
-            _LOGGER.debug("DISCOVERY_DEBUG: starting filter loop")
-            if self._manager is not None:
-                cached_macs = []
-                from .cloud import _cache as _cloud_cache
-                for item in _cloud_cache.values():
-                    cached_macs.extend(item.credentials.keys())
-                _LOGGER.warning("DISCOVERY_DEBUG: cached MACs in _cache: %s", cached_macs)
-            else:
-                _LOGGER.warning("DISCOVERY_DEBUG: manager is None")
+            # Iterate all BLE devices HA has seen and decide which are addable.
+            from .cloud import _cache as _cloud_cache
+            cached_macs: list[str] = []
+            for item in _cloud_cache.values():
+                cached_macs.extend(item.credentials.keys())
+            _LOGGER.info(
+                "tuya_ble discovery: starting filter (cached_macs=%d)",
+                len(cached_macs),
+            )
             total_seen = 0
             for discovery in async_discovered_service_info(self.hass):
                 total_seen += 1
-                tuya_uuid_ok = (
-                    discovery.service_data is not None
-                    and SERVICE_UUID in discovery.service_data.keys()
-                )
+                addr = discovery.address
+                if addr in current_addresses or addr in self._discovered_devices:
+                    _LOGGER.debug("tuya_ble discovery: skip %s (already known)", addr)
+                    continue
+                svc_keys = list((discovery.service_data or {}).keys())
+                tuya_uuid_ok = SERVICE_UUID in svc_keys
                 mac_cached = (
                     self._manager is not None
-                    and self._manager.has_cached_credentials(discovery.address)
+                    and self._manager.has_cached_credentials(addr)
                 )
-                _LOGGER.warning(
-                    "DISCOVERY_DEBUG: addr=%s name=%s svc_keys=%s uuid_ok=%s cached=%s already_cfg=%s already_disc=%s",
-                    discovery.address, getattr(discovery, "name", "?"),
-                    list((discovery.service_data or {}).keys()),
-                    tuya_uuid_ok, mac_cached,
-                    discovery.address in current_addresses,
-                    discovery.address in self._discovered_devices,
+                _LOGGER.info(
+                    "tuya_ble discovery: %s name=%r svc=%s uuid_match=%s mac_cached=%s",
+                    addr, getattr(discovery, "name", None) or "?",
+                    svc_keys or "[]", tuya_uuid_ok, mac_cached,
                 )
-                if (
-                    discovery.address in current_addresses
-                    or discovery.address in self._discovered_devices
-                ):
-                    continue
                 if not (tuya_uuid_ok or mac_cached):
                     continue
-                _LOGGER.warning("DISCOVERY_DEBUG: ACCEPTING %s", discovery.address)
-                self._discovered_devices[discovery.address] = discovery
-            _LOGGER.warning("DISCOVERY_DEBUG: total scanned=%d, accepted=%d", total_seen, len(self._discovered_devices))
+                self._discovered_devices[addr] = discovery
+                _LOGGER.info("tuya_ble discovery: accepted %s", addr)
+            _LOGGER.info(
+                "tuya_ble discovery: done (total_seen=%d accepted=%d)",
+                total_seen, len(self._discovered_devices),
+            )
 
         if not self._discovered_devices:
             return self.async_abort(reason="no_unconfigured_devices")
