@@ -40,9 +40,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, address.upper(), True
     ) or await get_device(address)
     if not ble_device:
-        raise ConfigEntryNotReady(
-            f"Could not find Tuya BLE device with address {address}"
+        # Bound BLE-only lamps often have not been seen by HA's bluetooth
+        # cache at this exact moment. Do an active short-window scan for the
+        # specific MAC before giving up.
+        _LOGGER.info(
+            "tuya_ble setup: %s not in BT cache, active scanning 20s",
+            address,
         )
+        try:
+            from bleak import BleakScanner
+            ble_device = await BleakScanner.find_device_by_address(
+                address.upper(), timeout=20.0
+            )
+        except Exception as e:
+            _LOGGER.warning(
+                "tuya_ble setup: active scan failed for %s: %s", address, e
+            )
+        if ble_device is None:
+            _LOGGER.info(
+                "tuya_ble setup: %s still not visible; will retry later",
+                address,
+            )
+            raise ConfigEntryNotReady(
+                f"Could not find Tuya BLE device with address {address}"
+            )
+        _LOGGER.info("tuya_ble setup: active scan located %s", address)
     manager = HASSTuyaBLEDeviceManager(hass, entry.options.copy())
     device = TuyaBLEDevice(manager, ble_device)
     await device.initialize()
