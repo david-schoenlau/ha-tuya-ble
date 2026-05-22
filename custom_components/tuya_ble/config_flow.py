@@ -205,10 +205,9 @@ class TuyaBLEOptionsFlow(OptionsFlowWithConfigEntry):
         return _show_login_form(self, user_input, errors, placeholders)
 
 
-class TuyaBLEConfigFlow(ConfigFlow):
+class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tuya BLE."""
 
-    domain = DOMAIN
     VERSION = 1
 
     def __init__(self) -> None:
