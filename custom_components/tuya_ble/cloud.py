@@ -153,37 +153,75 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
         return await self._login(self._data, add_to_cache)
 
     async def _fill_cache_item(self, item: TuyaCloudCacheItem) -> None:
-        devices_response = await self._hass.async_add_executor_job(
-            item.api.get,
-            TUYA_API_DEVICES_URL % (item.api.token_info.uid),
+        _LOGGER.info("tuya_ble cloud: _fill_cache_item starting")
+        try:
+            devices_response = await self._hass.async_add_executor_job(
+                item.api.get,
+                TUYA_API_DEVICES_URL % (item.api.token_info.uid),
+            )
+        except Exception as e:
+            _LOGGER.exception("tuya_ble cloud: device list query failed: %s", e)
+            return
+        if not devices_response.get(TUYA_RESPONSE_SUCCESS):
+            _LOGGER.warning("tuya_ble cloud: device list query unsuccessful: %s", devices_response)
+            return
+        devices = devices_response.get(TUYA_RESPONSE_RESULT)
+        if not isinstance(devices, Iterable):
+            _LOGGER.warning("tuya_ble cloud: device list result not iterable: %r", devices)
+            return
+        devices = list(devices)
+        _LOGGER.info("tuya_ble cloud: device list returned %d devices", len(devices))
+        for device in devices:
+            dev_id = device.get("id")
+            dev_name = device.get("name")
+            dev_cat = device.get("category")
+            try:
+                fi_response = await self._hass.async_add_executor_job(
+                    item.api.get,
+                    TUYA_API_FACTORY_INFO_URL % (dev_id),
+                )
+            except Exception as e:
+                _LOGGER.exception(
+                    "tuya_ble cloud: factory_info failed for %s (%s/%s): %s",
+                    dev_id, dev_cat, dev_name, e,
+                )
+                continue
+            fi_result = fi_response.get(TUYA_RESPONSE_RESULT)
+            if not fi_result or len(fi_result) == 0:
+                _LOGGER.info(
+                    "tuya_ble cloud: %s (%s/%s) — no factory_info result, skipping",
+                    dev_id, dev_cat, dev_name,
+                )
+                continue
+            factory_info = fi_result[0]
+            if not factory_info or TUYA_FACTORY_INFO_MAC not in factory_info:
+                _LOGGER.info(
+                    "tuya_ble cloud: %s (%s/%s) — factory_info has no MAC, skipping. keys=%s",
+                    dev_id, dev_cat, dev_name,
+                    list(factory_info.keys()) if factory_info else [],
+                )
+                continue
+            raw_mac = factory_info[TUYA_FACTORY_INFO_MAC]
+            mac = ":".join(raw_mac[i : i + 2] for i in range(0, 12, 2)).upper()
+            item.credentials[mac] = {
+                CONF_ADDRESS: mac,
+                CONF_UUID: device.get("uuid"),
+                CONF_LOCAL_KEY: device.get("local_key"),
+                CONF_DEVICE_ID: device.get("id"),
+                CONF_CATEGORY: device.get("category"),
+                CONF_PRODUCT_ID: device.get("product_id"),
+                CONF_DEVICE_NAME: device.get("name"),
+                CONF_PRODUCT_MODEL: device.get("model"),
+                CONF_PRODUCT_NAME: device.get("product_name"),
+            }
+            _LOGGER.info(
+                "tuya_ble cloud: cached %s (%s/%s) MAC=%s",
+                dev_id, dev_cat, dev_name, mac,
+            )
+        _LOGGER.info(
+            "tuya_ble cloud: _fill_cache_item done, %d MACs in credentials",
+            len(item.credentials),
         )
-        if devices_response.get(TUYA_RESPONSE_SUCCESS):
-            devices = devices_response.get(TUYA_RESPONSE_RESULT)
-            if isinstance(devices, Iterable):
-                for device in devices:
-                    fi_response = await self._hass.async_add_executor_job(
-                        item.api.get,
-                        TUYA_API_FACTORY_INFO_URL % (device.get("id")),
-                    )
-                    fi_response_result = fi_response.get(TUYA_RESPONSE_RESULT)
-                    if fi_response_result and len(fi_response_result) > 0:
-                        factory_info = fi_response_result[0]
-                        if factory_info and (TUYA_FACTORY_INFO_MAC in factory_info):
-                            mac = ":".join(
-                                factory_info[TUYA_FACTORY_INFO_MAC][i : i + 2]
-                                for i in range(0, 12, 2)
-                            ).upper()
-                            item.credentials[mac] = {
-                                CONF_ADDRESS: mac,
-                                CONF_UUID: device.get("uuid"),
-                                CONF_LOCAL_KEY: device.get("local_key"),
-                                CONF_DEVICE_ID: device.get("id"),
-                                CONF_CATEGORY: device.get("category"),
-                                CONF_PRODUCT_ID: device.get("product_id"),
-                                CONF_DEVICE_NAME: device.get("name"),
-                                CONF_PRODUCT_MODEL: device.get("model"),
-                                CONF_PRODUCT_NAME: device.get("product_name"),
-                            }
 
     async def build_cache(self) -> None:
         """Build cache of the Tuya BLE devices credentials."""
