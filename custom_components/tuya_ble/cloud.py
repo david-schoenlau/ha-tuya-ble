@@ -189,14 +189,14 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
             fi_result = fi_response.get(TUYA_RESPONSE_RESULT)
             if not fi_result or len(fi_result) == 0:
                 _LOGGER.info(
-                    "tuya_ble cloud: %s (%s/%s) — no factory_info result, skipping",
+                    "tuya_ble cloud: %s (%s/%s) - no factory_info result, skipping",
                     dev_id, dev_cat, dev_name,
                 )
                 continue
             factory_info = fi_result[0]
             if not factory_info or TUYA_FACTORY_INFO_MAC not in factory_info:
                 _LOGGER.info(
-                    "tuya_ble cloud: %s (%s/%s) — factory_info has no MAC, skipping. keys=%s",
+                    "tuya_ble cloud: %s (%s/%s) - factory_info has no MAC, skipping. keys=%s",
                     dev_id, dev_cat, dev_name,
                     list(factory_info.keys()) if factory_info else [],
                 )
