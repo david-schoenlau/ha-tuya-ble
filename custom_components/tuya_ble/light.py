@@ -23,7 +23,7 @@ from .tuya_ble import (
     TuyaBLEDevice,
     TuyaBLEEntityDescription,
 )
-from homeassistant.custom_components.tuya_ble.tuya_ble.const import (
+from .tuya_ble.const import (
     TuyaDataPointCode,
     TuyaDataPointType,
     TuyaWorkMode,
