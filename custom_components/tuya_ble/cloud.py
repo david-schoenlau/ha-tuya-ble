@@ -128,7 +128,19 @@ class HASSTuyaBLEDeviceManager(AbstaractTuyaBLEDeviceManager):
                     cache_item.api = api
                     cache_item.login = data
                 else:
-                    _cache[cache_key] = TuyaCloudCacheItem(api, data, {})
+                    cache_item = TuyaCloudCacheItem(api, data, {})
+                    _cache[cache_key] = cache_item
+                # Populate device credentials now so callers (e.g. the
+                # config flow's async_step_device cache check) can see
+                # the MACs immediately, rather than relying on an
+                # additional build_cache invocation that may not run
+                # for user-driven Add-Integration flows.
+                if len(cache_item.credentials) == 0:
+                    await self._fill_cache_item(cache_item)
+                _LOGGER.info(
+                    "tuya_ble cloud: cache item now has %d credentials",
+                    len(cache_item.credentials),
+                )
 
         return response
 
