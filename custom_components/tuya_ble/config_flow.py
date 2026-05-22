@@ -12,12 +12,15 @@ from homeassistant.components.bluetooth import (
     async_discovered_service_info,
 )
 from homeassistant.components.tuya.const import (
-    CONF_APP_TYPE,
     CONF_ENDPOINT,
     TUYA_RESPONSE_CODE,
     TUYA_RESPONSE_MSG,
     TUYA_RESPONSE_SUCCESS,
 )
+
+# Defined locally because HA Core removed CONF_APP_TYPE from tuya.const
+# during the 2024.x cleanup. Value matches the historical core definition.
+CONF_APP_TYPE = "tuya_app_type"
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
