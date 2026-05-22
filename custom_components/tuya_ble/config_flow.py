@@ -354,6 +354,81 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                 total_seen, len(self._discovered_devices),
             )
 
+            # Inject every cached MAC that we have cloud credentials for but
+            # whose advertisement HA's bluetooth integration didn't surface
+            # (this happens with bound Tuya BLE lamps that advertise with
+            # an empty payload — Bleak/BlueZ sees them, HA's discovery
+            # cache often filters them out).
+            from homeassistant.components.bluetooth import (
+                async_ble_device_from_address,
+            )
+            from home_assistant_bluetooth import BluetoothServiceInfoBleak
+            from bleak.backends.scanner import AdvertisementData
+            for mac_addr in cached_macs:
+                if mac_addr in current_addresses:
+                    continue
+                if mac_addr in self._discovered_devices:
+                    continue
+                ble_dev = async_ble_device_from_address(self.hass, mac_addr, True)
+                if ble_dev is None:
+                    _LOGGER.info(
+                        "tuya_ble discovery: cached MAC %s not in BT manager — injecting placeholder",
+                        mac_addr,
+                    )
+                    # Best-effort placeholder so user can still pick it.
+                    # If selected, the connect step will scan/connect directly.
+                    try:
+                        adv = AdvertisementData(
+                            local_name=None,
+                            manufacturer_data={},
+                            service_data={},
+                            service_uuids=[],
+                            tx_power=None,
+                            rssi=-127,
+                            platform_data=(),
+                        )
+                    except TypeError:
+                        # older bleak signature
+                        adv = AdvertisementData(
+                            local_name=None,
+                            manufacturer_data={},
+                            service_data={},
+                            service_uuids=[],
+                            tx_power=None,
+                            rssi=-127,
+                        )
+                    # Lightweight stand-in object — only address is used by
+                    # the device-select form. The real connect uses the
+                    # bluetooth manager later.
+                    class _ShimDevice:
+                        def __init__(self, address: str):
+                            self.address = address
+                            self.name = None
+                    self._discovered_devices[mac_addr] = BluetoothServiceInfoBleak(
+                        name=mac_addr,
+                        address=mac_addr,
+                        rssi=-127,
+                        manufacturer_data={},
+                        service_data={},
+                        service_uuids=[],
+                        source="local",
+                        device=_ShimDevice(mac_addr),
+                        advertisement=adv,
+                        connectable=True,
+                        time=0,
+                        tx_power=None,
+                    )
+                else:
+                    _LOGGER.info(
+                        "tuya_ble discovery: cached MAC %s found in BT manager",
+                        mac_addr,
+                    )
+                    self._discovered_devices[mac_addr] = ble_dev
+            _LOGGER.info(
+                "tuya_ble discovery: after cache-inject total=%d",
+                len(self._discovered_devices),
+            )
+
         if not self._discovered_devices:
             return self.async_abort(reason="no_unconfigured_devices")
 
