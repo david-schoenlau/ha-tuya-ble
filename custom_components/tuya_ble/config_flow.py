@@ -318,27 +318,44 @@ class TuyaBLEConfigFlow(ConfigFlow, domain=DOMAIN):
             self._discovered_devices[discovery.address] = discovery
         else:
             current_addresses = self._async_current_ids()
+            _LOGGER.debug("DISCOVERY_DEBUG: starting filter loop")
+            if self._manager is not None:
+                cached_macs = []
+                from .cloud import _cache as _cloud_cache
+                for item in _cloud_cache.values():
+                    cached_macs.extend(item.credentials.keys())
+                _LOGGER.warning("DISCOVERY_DEBUG: cached MACs in _cache: %s", cached_macs)
+            else:
+                _LOGGER.warning("DISCOVERY_DEBUG: manager is None")
+            total_seen = 0
             for discovery in async_discovered_service_info(self.hass):
+                total_seen += 1
+                tuya_uuid_ok = (
+                    discovery.service_data is not None
+                    and SERVICE_UUID in discovery.service_data.keys()
+                )
+                mac_cached = (
+                    self._manager is not None
+                    and self._manager.has_cached_credentials(discovery.address)
+                )
+                _LOGGER.warning(
+                    "DISCOVERY_DEBUG: addr=%s name=%s svc_keys=%s uuid_ok=%s cached=%s already_cfg=%s already_disc=%s",
+                    discovery.address, getattr(discovery, "name", "?"),
+                    list((discovery.service_data or {}).keys()),
+                    tuya_uuid_ok, mac_cached,
+                    discovery.address in current_addresses,
+                    discovery.address in self._discovered_devices,
+                )
                 if (
                     discovery.address in current_addresses
                     or discovery.address in self._discovered_devices
                 ):
                     continue
-                # Standard path: device advertises with Tuya service UUID.
-                tuya_uuid_ok = (
-                    discovery.service_data is not None
-                    and SERVICE_UUID in discovery.service_data.keys()
-                )
-                # Fallback for bound BLE-only lamps that advertise with
-                # empty service data. Accept them if the cloud cache
-                # already knows this MAC (so we have local_key + product_id).
-                mac_cached = (
-                    self._manager is not None
-                    and self._manager.has_cached_credentials(discovery.address)
-                )
                 if not (tuya_uuid_ok or mac_cached):
                     continue
+                _LOGGER.warning("DISCOVERY_DEBUG: ACCEPTING %s", discovery.address)
                 self._discovered_devices[discovery.address] = discovery
+            _LOGGER.warning("DISCOVERY_DEBUG: total scanned=%d, accepted=%d", total_seen, len(self._discovered_devices))
 
         if not self._discovered_devices:
             return self.async_abort(reason="no_unconfigured_devices")
